@@ -25,6 +25,9 @@ var dataExchange = require('./routes/data-exchange');
 // var fs = require("fs");
 // var assettemplatefile = "sample-data/predix-asset/compressor-2017-clone.json";
 
+var cityIQRest = require('./controllers/cityIQ_rest');
+var webToken = require('./controllers/webToken')
+var cityIQWs = require('./controllers/cityIQ_wss');
 /**********************************************************************
        SETTING UP EXRESS SERVER
 ***********************************************************************/
@@ -42,6 +45,8 @@ if (node_env === 'development') {
   app.use(require('compression')()) // gzip compression
 }
 
+app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.json());
 // Session Storage Configuration:
 // *** Use this in-memory session store for development only. Use redis for prod. **
 var sessionOptions = {
@@ -132,6 +137,52 @@ if (!config.isUaaConfigured()) {
   //     proxy.customProxyMiddleware('/windy', windServiceURL)
   //   );
   // }
+
+  var router = express.Router();
+
+// middleware that logs all requests
+router.use(function(req, res, next){
+  console.log('Something is happening.');
+
+  //Allow Cross Origin Resource Sharing
+  res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header('Access-Control-Allow-Methods', "GET, PUT, POST, DELETE");
+
+  // go to the next route!
+  next();
+});
+
+router.get('/', function(req, res) {
+    res.json({ message: 'Getting data from server!' });   
+});
+
+router.post('/', function(req, res){
+  res.json({message: 'post'});
+});
+
+router.put('/', function(req, res){
+  res.json({message: 'put'});
+})
+
+router.delete('/', function(req, res){
+  res.json({message: 'delete'});
+})
+
+// REGISTER OUR ROUTES
+// ==============================================
+app.use('/api', router);
+
+/*
+* Get a web token and establish web socket support for live data streaming
+*/
+webToken.getToken(function(token){
+
+  cityIQRest.getPedestrianData(token, '32.715675:-117.161230,32.708498:-117.151681', 1499712983000, 1499714983000, function(result){
+  console.log(result);
+   });
+});
+
 
   if (config.rmdDatasourceURL && config.rmdDatasourceURL.indexOf('https') === 0) {
     app.get('/api/datagrid/*', 
