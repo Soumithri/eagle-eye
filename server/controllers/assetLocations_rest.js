@@ -4,7 +4,7 @@
 var https = require('https');
 
 module.exports = {
-    getPedestrianData: getPedestrianData
+    getAssetLocations: getAssetLocations
 };
 
 /*
@@ -13,19 +13,18 @@ module.exports = {
 *   and start and end time
 * @return - uses a callback called next
 */
-function getPedestrianData(uaaToken, boundedBox, t1, t2, next)
+function getAssetLocations(uaaToken, assetUId, next)
 {
     var token = 'Bearer ' + uaaToken;
-    var eventURL = 'ic-event-service-sdhack.run.aws-usw02-pr.ice.predix.io'
-    var reqPath = '/v2/locations/events?eventType=PEDEVT&bbox=' + boundedBox +
-        '&locationType=WALKWAY&startTime=' + t1 + '&endTime=' + t2
+    var eventURL = 'ic-event-service.run.aws-usw02-pr.ice.predix.io'
+    var reqPath = '/v2/metadata/assets/' + assetUId
 
     var options = {
         host: eventURL,
         path: reqPath,
         headers: {
             'authorization': token,
-            'predix-zone-id': 'SD-IE-PEDESTRIAN'
+            'predix-zone-id': 'SD-IE-TRAFFIC'
         }
     };
 
