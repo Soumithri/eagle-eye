@@ -7,12 +7,12 @@ module.exports = {
     getToken: getToken
 }
 
-// token info
-var baseURL = '890407d7-e617-4d70-985f-01792d693387.predix-uaa.run.aws-usw02-pr.ice.predix.io'
+// simulated token info
+var baseURL = '624eff02-dbb1-4c6c-90bc-fa85a29e5fa8.predix-uaa.run.aws-usw02-pr.ice.predix.io'
 var accessTokenURI = '/oauth/token?grant_type=client_credentials'
-var publicKey = 'ZGlnaXRhbGludGVybjpAZGlnaXRhbGludGVybg=='
-var clientID = 'digitalintern'
-var clientSecret = '@digitalintern'
+var publicKey = 'c2QuaGFja2F0aG9uOkVRUEBFQGk0djY='
+var clientID = 'sd.hackathon'
+var clientSecret = 'EQP@E@i4v6'
 
 /*
 * getToken
@@ -36,7 +36,7 @@ function getToken(next){
         if (res.statusCode !== 200) {
             error = new Error(`Request Failed.\n` +
                               `Status Code: ${statusCode}`);
-        } 
+        }
 
         var rawData = ''
         res.on('data', function (chunk) {
@@ -44,7 +44,8 @@ function getToken(next){
         });
         res.on('end', function(){
             let parsedData = JSON.parse(rawData);
-            next(parsedData.access_token)
+            next(parsedData.access_token);
+
         });
     });
 }

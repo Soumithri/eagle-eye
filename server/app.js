@@ -25,6 +25,7 @@ var dataExchange = require('./routes/data-exchange');
 // var fs = require("fs");
 // var assettemplatefile = "sample-data/predix-asset/compressor-2017-clone.json";
 
+var assetLocation = require('./controllers/assetLocations_rest');
 var cityIQRest = require('./controllers/cityIQ_rest');
 var webToken = require('./controllers/webToken')
 var cityIQWs = require('./controllers/cityIQ_wss');
@@ -88,7 +89,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 app.get('/docs', require('./routes/docs')(config));
 
-if (!config.isUaaConfigured()) { 
+if (!config.isUaaConfigured()) {
   // no restrictions
   app.use(express.static(path.join(__dirname, process.env['base-dir'] ? process.env['base-dir'] : '../public')));
 
@@ -154,7 +155,7 @@ router.use(function(req, res, next){
 });
 
 router.get('/', function(req, res) {
-    res.json({ message: 'Getting data from server!' });   
+    res.json({ message: 'Getting data from server!' });
 });
 
 router.post('/', function(req, res){
@@ -176,24 +177,38 @@ app.use('/api', router);
 /*
 * Get a web token and establish web socket support for live data streaming
 */
+var assetUIds = new Array();
 webToken.getToken(function(token){
+  cityIQRest.getPedestrianData(token, '33.077762:-117.663817,32.559574:-116.584410', 1524248219525, 1524766619525, function(result){
+   //console.log(result);
+   var parsedJSON = JSON.parse(JSON.stringify(result.content));
+   console.log(parsedJSON[0].assetUid);
+   for(var i=0; i<parsedJSON.length; i++){
+     console.log(parsedJSON[i].assetUid);
+     if(assetUIds.indexOf(parsedJSON[i].assetUid)==-1){
+       assetUIds.push(parsedJSON[i].assetUid);
+     }
+   }
+   for(var j in assetUIds){
+     assetLocation.getAssetLocations(token, assetUIds[j], function(output){
+       console.log(output);
+     });
 
-  cityIQRest.getPedestrianData(token, '32.715675:-117.161230,32.708498:-117.151681', 1499712983000, 1499714983000, function(result){
-  console.log(result);
-   });
+   }
+
+  });
 });
 
-
   if (config.rmdDatasourceURL && config.rmdDatasourceURL.indexOf('https') === 0) {
-    app.get('/api/datagrid/*', 
-        proxy.addClientTokenMiddleware, 
+    app.get('/api/datagrid/*',
+        proxy.addClientTokenMiddleware,
         proxy.customProxyMiddleware('/api/datagrid', config.rmdDatasourceURL, '/services/experience/datasource/datagrid'));
   }
 
   if (config.dataExchangeURL && config.dataExchangeURL.indexOf('https') === 0) {
     app.post('/api/cloneasset', proxy.addClientTokenMiddleware, dataExchange.cloneAsset);
 
-    app.post('/api/updateasset', proxy.addClientTokenMiddleware, 
+    app.post('/api/updateasset', proxy.addClientTokenMiddleware,
         proxy.customProxyMiddleware('/api/updateasset', config.dataExchangeURL, '/services/fdhrouter/fielddatahandler/putfielddata'));
   }
 
@@ -219,7 +234,7 @@ webToken.getToken(function(token){
 /*******************************************************
 SET UP MOCK API ROUTES
 *******************************************************/
-// NOTE: these routes are added after the real API routes. 
+// NOTE: these routes are added after the real API routes.
 //  So, if you have configured asset, the real asset API will be used, not the mock API.
 // Import route modules
 var mockAssetRoutes = require('./routes/mock-asset.js')();
