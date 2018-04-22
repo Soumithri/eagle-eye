@@ -7,17 +7,18 @@ module.exports = {
     getAssetLocations: getAssetLocations
 };
 
+var output;
 /*
 * getPedestrianData
 *   retrieves pedestrian data given a uaa token, bounded box of locations,
 *   and start and end time
 * @return - uses a callback called next
 */
-function getAssetLocations(uaaToken, assetUId, next)
+function getAssetLocations(uaaToken, bbox, next)
 {
     var token = 'Bearer ' + uaaToken;
     var eventURL = 'ic-metadata-service-sdhack.run.aws-usw02-pr.ice.predix.io'
-    var reqPath = '/v2/metadata/assets/' + assetUId
+    var reqPath = '/v2/metadata/assets/search?bbox=' + bbox
 
     var options = {
         host: eventURL,
@@ -41,11 +42,11 @@ function getAssetLocations(uaaToken, assetUId, next)
             rawData += chunk
         });
         res.on('end', function(){
+            //console.log(rawData);
             let data = JSON.parse(rawData)
-            next(data)
+            //next(data);
+            next(data);
         });
-
     });
-
 
 }
