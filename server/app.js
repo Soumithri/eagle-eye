@@ -25,6 +25,13 @@ var dataExchange = require('./routes/data-exchange');
 // var fs = require("fs");
 // var assettemplatefile = "sample-data/predix-asset/compressor-2017-clone.json";
 
+var assetLocation = require('./controllers/assetLocations_rest');
+var cityIQRest = require('./controllers/cityIQ_rest');
+var webToken = require('./controllers/webToken')
+var cityIQWs = require('./controllers/cityIQ_wss');
+var map = require('./controllers/map')
+var getAssets = require('./controllers/getAllAssets')
+var sendObj = require('./pedData')
 /**********************************************************************
        SETTING UP EXRESS SERVER
 ***********************************************************************/
@@ -42,6 +49,8 @@ if (node_env === 'development') {
   app.use(require('compression')()) // gzip compression
 }
 
+app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.json());
 // Session Storage Configuration:
 // *** Use this in-memory session store for development only. Use redis for prod. **
 var sessionOptions = {
@@ -83,7 +92,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 app.get('/docs', require('./routes/docs')(config));
 
-if (!config.isUaaConfigured()) { 
+if (!config.isUaaConfigured()) {
   // no restrictions
   app.use(express.static(path.join(__dirname, process.env['base-dir'] ? process.env['base-dir'] : '../public')));
 
@@ -133,16 +142,169 @@ if (!config.isUaaConfigured()) {
   //   );
   // }
 
+  var router = express.Router();
+
+// middleware that logs all requests
+router.use(function(req, res, next){
+  console.log('Something is happening.');
+
+  //Allow Cross Origin Resource Sharing
+  res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header('Access-Control-Allow-Methods', "GET, PUT, POST, DELETE");
+
+  // go to the next route!
+  next();
+});
+
+router.get('/', function(req, res) {
+    res.json({ message: 'Getting data from server!' });
+});
+
+router.post('/', function(req, res){
+  res.json({message: 'post'});
+});
+
+router.put('/', function(req, res){
+  res.json({message: 'put'});
+})
+
+router.delete('/', function(req, res){
+  res.json({message: 'delete'});
+})
+
+// REGISTER OUR ROUTES
+// ==============================================
+app.use('/api', router);
+
+/*
+* Get a web token and establish web socket support for live data streaming
+*/
+var assetUIds = new Array();
+var location = new Array();
+var JSONObject = new Array();
+var jObject =
+                {
+                 "coordinates": "coordinates",
+                 "pedestrianCount": "pedestrianCount",
+                 "assetUid":"assetUid",
+
+                }
+
+app.use('/map',function(req, res){
+
+  webToken.getToken(function(token){
+    cityIQRest.getPedestrianData(token, '333.077762:-117.663817,32.559574:-116.584410', 1524248219525, 1524766619525, function(result){
+     //console.log(result);
+     //var tk = token;
+     var parsedJSON = JSON.parse(JSON.stringify(result.content));
+     console.log(parsedJSON[0].measures.pedestrianCount);
+     for(var i=0; i<parsedJSON.length; i++){
+
+       //assetUIds[i] = parsedJSON[i].assetUid;
+        if(assetUIds.indexOf(parsedJSON[i].assetUid)==-1){
+          assetUIds.push(parsedJSON[i].assetUid);
+        }
+     }
+
+
+    getAssets.getAssetLocations(token, '333.077762:-117.663817,32.559574:-116.584410', function(output){
+        console.log('output is --->',output);
+        var assUD = JSON.parse(JSON.stringify(output.content));
+
+         for(i in assUD){
+           if( assUD[i] == assetUIds[0] ){
+             jObject.coordinates = JSON.parse(JSON.stringify(output)).coordinates;
+             jObject.pedestrianCount = parsedJSON[i].measures.pedestrianCount;
+             jObject.assetUid = assetUIds;
+              console.log('parsed uid',assetUIds);
+              console.log('true');
+              //JSONObject.coordinates =
+            }
+
+          else {
+            jObject.coordinates ='';
+            jObject.pedestrianCount = parsedJSON[i].measures.pedestrianCount;
+            jObject.assetUid = assetUIds;
+
+            //console.log('pedestrianCount', jObject.pedestrianCount);
+          }
+
+         }
+         sendObj.getPData(jObject);
+         //console.log('elses uid',jObject);
+
+
+    });
+
+     //res.send(map.mappingData(assetUIds));
+    });
+
+  });
+});
+
+var pythonShell = require('python-shell')
+app.get('/gun', function(req, res) {
+  pythonShell.run('./server/gun_detection/video_recognition.py', function (err, results) {
+      if (err) throw err;
+      // results is an array consisting of messages collected during execution
+      console.log('results:', results.toString());
+      res.send(results.toString());
+    });
+ });
+
+
+
+
+
+// webToken.getToken(function(token){
+//   cityIQRest.getPedestrianData(token, '33.077762:-117.663817,32.559574:-116.584410', 1524248219525, 1524766619525, function(result){
+//    //console.log(result);
+//    //var tk = token;
+//    var parsedJSON = JSON.parse(JSON.stringify(result.content));
+//    console.log(parsedJSON[0].measures.pedestrianCount);
+//    for(var i=0; i<parsedJSON.length; i++){
+//
+//      //assetUIds[i] = parsedJSON[i].assetUid;
+//       if(assetUIds.indexOf(parsedJSON[i].assetUid)==-1){
+//         assetUIds.push(parsedJSON[i].assetUid);
+//       }
+//    }
+//    //console.log(assetUIds);
+//    //console.log(token);
+//    // console.log(token);
+//    // console.log(assetUIds);
+//       // assetLocation.getAssetLocations(token, '522de83f-e524-4f76-80f0-463d3815b7a4', function(output){
+//       //   console.log(output);
+//       // });
+//       //var location  = new Array();
+//    //  for(var j in assetUIds){
+//    //    assetLocation.getAssetLocations(token, assetUIds[j], function(output){
+//    //      //console.log(output.coordinates);
+//    //      var parsedOutput = JSON.parse(JSON.stringify(output));
+//    //      console.log(parsedOutput);
+//    //      location.push(parsedOutput.coordinates);
+//    //      console.log(location);
+//    //    });
+//    // //
+//    // }
+//    //console.log(location);
+//   });
+//
+//
+// });
+
+//console.log(assetUIds);
   if (config.rmdDatasourceURL && config.rmdDatasourceURL.indexOf('https') === 0) {
-    app.get('/api/datagrid/*', 
-        proxy.addClientTokenMiddleware, 
+    app.get('/api/datagrid/*',
+        proxy.addClientTokenMiddleware,
         proxy.customProxyMiddleware('/api/datagrid', config.rmdDatasourceURL, '/services/experience/datasource/datagrid'));
   }
 
   if (config.dataExchangeURL && config.dataExchangeURL.indexOf('https') === 0) {
     app.post('/api/cloneasset', proxy.addClientTokenMiddleware, dataExchange.cloneAsset);
 
-    app.post('/api/updateasset', proxy.addClientTokenMiddleware, 
+    app.post('/api/updateasset', proxy.addClientTokenMiddleware,
         proxy.customProxyMiddleware('/api/updateasset', config.dataExchangeURL, '/services/fdhrouter/fielddatahandler/putfielddata'));
   }
 
@@ -168,7 +330,7 @@ if (!config.isUaaConfigured()) {
 /*******************************************************
 SET UP MOCK API ROUTES
 *******************************************************/
-// NOTE: these routes are added after the real API routes. 
+// NOTE: these routes are added after the real API routes.
 //  So, if you have configured asset, the real asset API will be used, not the mock API.
 // Import route modules
 var mockAssetRoutes = require('./routes/mock-asset.js')();
