@@ -243,6 +243,17 @@ app.use('/map',function(req, res){
   });
 });
 
+var pythonShell = require('python-shell')
+app.get('/gun', function(req, res) {
+  pythonShell.run('./server/gun_detection/video_recognition.py', function (err, results) {
+      if (err) throw err;
+      // results is an array consisting of messages collected during execution
+      console.log('results:', results.toString());
+      res.send(results.toString());
+    });
+ });
+
+
 
 
 
